@@ -1,0 +1,67 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sism"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  numberId  Int      @unique              // ← entero obligatorio y único
+  password  String
+  role      Role
+  moduleId  String?
+  module    Module?  @relation(fields: [moduleId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Module {
+  id      String  @id @default(uuid())
+  name    String
+  users   User[]
+}
+
+model Service {
+  id         String   @id @default(uuid())
+  name       String
+  code       String   // Ej: "R" para Reclamar Fórmula
+  createdAt  DateTime @default(now())
+}
+
+model Turn {
+  id          String     @id @default(uuid())
+  number      Int
+  code        String
+  service     Service    @relation(fields: [serviceId], references: [id])
+  serviceId   String
+  status      TurnStatus
+  priority    Int        @default(0)
+  calledCount Int        @default(0)
+  createdAt   DateTime   @default(now())
+  calledAt    DateTime?
+  module      Module?    @relation(fields: [moduleId], references: [id])
+  moduleId    String?
+}
+
+enum Role {
+  ADMIN
+  ADVISOR
+}
+
+enum TurnStatus {
+  PENDING     // Aún no ha sido llamado
+  CALLED      // Llamado pero aún no atendido
+  ATTENDED    // Atendido
+  SKIPPED     // Se llamó pero no acudió
+  REQUEUED    // Se volvió a colocar en cola
+}
