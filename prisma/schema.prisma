@@ -6,7 +6,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -29,8 +28,14 @@ model User {
 model Module {
   id    String @id @default(uuid())
   name  String
+  status ModuleStatus @default(AVAILABLE)
   users User[]
   turns Turn[] // ← Relación inversa agregada
+}
+
+enum ModuleStatus {
+  AVAILABLE
+  OCCUPIED
 }
 
 model Service {

@@ -1,8 +1,10 @@
 import { PrismaClient } from '../src/generated/prisma'
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient()
 
 async function main() {
+  const hashedPassword = await bcrypt.hash('sism12345', 10);
   // Crear módulos
   const modulo1 = await prisma.module.create({
     data: {
@@ -30,14 +32,14 @@ async function main() {
       {
         name: 'Admin',
         username: 'admin',
-        password: 'admin123', // ⚠️ en producción usar hash
+        password: hashedPassword, // ⚠️ en producción usar hash
         role: 'ADMIN',
         numberId: 1001,
       },
       {
         name: 'Asesor 1',
         username: 'asesor1',
-        password: 'asesor123', // ⚠️ en producción usar hash
+        password: hashedPassword, // ⚠️ en producción usar hash
         role: 'ADVISOR',
         numberId: 1002,
         moduleId: modulo1.id,
