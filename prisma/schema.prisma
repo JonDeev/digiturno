@@ -10,14 +10,14 @@ generator client {
 }
 
 datasource db {
-  provider = "sism"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model User {
   id        String   @id @default(uuid())
   username  String   @unique
-  numberId  Int      @unique              // ← entero obligatorio y único
+  numberId  Int      @unique // ← entero obligatorio y único
   password  String
   role      Role
   moduleId  String?
@@ -26,16 +26,18 @@ model User {
 }
 
 model Module {
-  id      String  @id @default(uuid())
-  name    String
-  users   User[]
+  id    String @id @default(uuid())
+  name  String
+  users User[]
+  turns Turn[] // ← Relación inversa agregada
 }
 
 model Service {
-  id         String   @id @default(uuid())
-  name       String
-  code       String   // Ej: "R" para Reclamar Fórmula
-  createdAt  DateTime @default(now())
+  id        String   @id @default(uuid())
+  name      String
+  code      String
+  createdAt DateTime @default(now())
+  turns     Turn[] // ← Relación inversa agregada
 }
 
 model Turn {
@@ -59,9 +61,9 @@ enum Role {
 }
 
 enum TurnStatus {
-  PENDING     // Aún no ha sido llamado
-  CALLED      // Llamado pero aún no atendido
-  ATTENDED    // Atendido
-  SKIPPED     // Se llamó pero no acudió
-  REQUEUED    // Se volvió a colocar en cola
+  PENDING // Aún no ha sido llamado
+  CALLED // Llamado pero aún no atendido
+  ATTENDED // Atendido
+  SKIPPED // Se llamó pero no acudió
+  REQUEUED // Se volvió a colocar en cola
 }
