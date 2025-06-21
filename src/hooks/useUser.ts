@@ -7,6 +7,7 @@ const jwt_decode = require('jwt-decode').default;
 interface DecodedToken {
   userId: string;
   username: string;
+  name: string;
   moduleId: string;
   role: string;
   exp: number;

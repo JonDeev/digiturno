@@ -50,6 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       {
         userId: user.id,
         username: user.username,
+        name: user.name,
         moduleId,
         role: user.role,
       },
