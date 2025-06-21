@@ -54,7 +54,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         role: user.role,
       },
       JWT_SECRET,
-      { expiresIn: '10s' }
+      { expiresIn: '8h' }
     );
 
     return res.status(200).json({ token });

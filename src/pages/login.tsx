@@ -9,6 +9,13 @@ export default function LoginPage() {
   const [modules, setModules] = useState([]);
   const [error, setError] = useState('');
 
+    useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      router.push('/asesor');
+    }
+  }, []);
+
   useEffect(() => {
     // Obtener módulos disponibles al cargar la vista
     const fetchModules = async () => {
@@ -31,20 +38,20 @@ export default function LoginPage() {
     });
     
     const result = await res.json();
-    console.log(result)
+    console.log("result",result.token)
     if (res.ok) {
-      localStorage.setItem('token', result); // Guardamos el JWT
-      router.push('/panel'); // Redirigir al panel de llamado
+      localStorage.setItem('token', result.token); // Guardamos el JWT
+      router.push('/asesor'); // Redirigir al panel de llamado
     } else {
       setError(result.message || 'Error al iniciar sesión');
     }
   };
 
   return (
-    <div className="min-h-screen grid grid-cols-1 md:grid-cols-2 bg-white">
+    <div className="grid min-h-screen grid-cols-1 bg-white md:grid-cols-2">
       {/* Imagen lado izquierdo */}
       <div className="hidden md:block">
-        <img src="/login-image.jpg" alt="Decoración" className="w-full h-full object-cover" />
+        <img src="/login-image.jpg" alt="Decoración" className="object-cover w-full h-full" />
       </div>
 
       {/* Formulario lado derecho */}
@@ -52,14 +59,14 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="w-full max-w-md space-y-6">
           <h2 className="text-3xl font-semibold text-blue-700">Bienvenido</h2>
 
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+          {error && <p className="text-sm text-red-500">{error}</p>}
 
           <input
             type="text"
             placeholder="Usuario"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className="w-full border rounded-lg px-4 py-2"
+            className="w-full px-4 py-2 border rounded-lg"
           />
 
           <input
@@ -67,13 +74,13 @@ export default function LoginPage() {
             placeholder="Contraseña"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full border rounded-lg px-4 py-2"
+            className="w-full px-4 py-2 border rounded-lg"
           />
 
           <select
             value={moduleId}
             onChange={(e) => setModuleId(e.target.value)}
-            className="w-full border rounded-lg px-4 py-2"
+            className="w-full px-4 py-2 border rounded-lg"
             required
           >
             <option value="">Seleccionar módulo</option>
@@ -84,7 +91,7 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg"
+            className="w-full py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600"
           >
             Ingresar
           </button>
