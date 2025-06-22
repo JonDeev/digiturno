@@ -1,12 +1,15 @@
-import { useUser } from '@/hooks/useUser'; 
+import { useUser } from '@/hooks/useUser'; // tu hook personalizado
 import { useAuth } from '@/hooks/useAuth'; // tu hook personalizado
-// tu hook personalizado
+import { useLastCalledTurn } from '@/hooks/useLastCalledTurn'; // tu hook personalizado
+import { useCurrentTurn } from '@/hooks/useCurrentTurn'; // tu hook personalizado
 import { useRouter } from 'next/router';
 import { useEffect } from 'react';
 
 export default function AsesorPanel() {
   useAuth(); // protege la ruta
   const user = useUser();
+  const { lastTurn, loading } = useLastCalledTurn(user?.moduleId);
+  const { turn, cargando, refetch } = useCurrentTurn(user?.moduleId);
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -25,6 +28,34 @@ export default function AsesorPanel() {
   localStorage.removeItem('token');
   router.push('/login');
   };
+
+  //FUNCION DE LLAMAR SIGUIENTE TURNO
+    const handleCallNextTurn = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+      const res = await fetch('/api/turns/call-next', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          body: JSON.stringify({ moduleId: user?.moduleId }),
+        },
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        // Aquí puedes guardar el turno llamado en estado, mostrar notificación, etc.
+        console.log('Turno llamado:', data);
+        await refetch(); // ← Actualiza turno actual en UI
+      } else {
+        alert(data.message || 'No se pudo llamar el siguiente turno');
+      }
+    } catch (err) {
+    console.error('Error al llamar siguiente turno:', err);
+  }
+  };
+
 
 
   return (
@@ -55,9 +86,30 @@ export default function AsesorPanel() {
       <div className="flex flex-1">
         {/* Panel lateral */}
         <aside className="w-full p-4 bg-gray-100 md:w-1/3 lg:w-1/4">
-          <h2 className="mb-4 text-lg font-semibold">Turno actual</h2>
+          <div>
+            <h3 className="text-lg font-bold">Turno actual:</h3>
+            {cargando ? (
+              <p>Cargando...</p>
+            ) : turn ? (
+              <p className="text-2xl">
+                {turn.service.name}
+              </p>
+            ) : (
+              <p>No hay turno en curso</p>
+            )}
+          </div>
           <div className="p-4 mb-4 text-center bg-white rounded shadow">
-            <span className="text-3xl font-bold text-blue-600">A001</span>
+            <span className="text-3xl font-bold text-blue-600">{
+              cargando ? (
+                <p>Cargando...</p>
+              ) : turn ? (
+                <p className="text-2xl">
+                  {turn.code}
+                </p>
+              ) : (
+                <p>000</p>
+              )}
+            </span>
           </div>
           <div className="flex flex-col space-y-2">
             <button className="py-2 text-white bg-yellow-400 rounded hover:bg-yellow-500">Poner en cola</button>
@@ -69,12 +121,22 @@ export default function AsesorPanel() {
         {/* Panel principal */}
         <main className="flex-1 p-6 bg-white">
           <h2 className="mb-4 text-xl font-semibold">Servicio: Reclamar formula (3 en espera)</h2>
-          <button className="px-6 py-3 mb-6 text-white bg-blue-600 rounded hover:bg-blue-700">
+          <button onClick={handleCallNextTurn} className="px-6 py-3 mb-6 text-white bg-blue-600 rounded hover:bg-blue-700">
             Llamar siguiente turno
           </button>
-          <div>
-            <h3 className="mb-2 text-lg font-medium">Último turno llamado</h3>
-            <div className="p-4 text-2xl font-bold text-center text-blue-700 bg-gray-100 rounded shadow">A000</div>
+          <div className="p-4">
+            <h2 className="mb-2 text-xl font-semibold">Último turno llamado</h2>
+            {loading ? (
+              <p>Cargando...</p>
+            ) : lastTurn ? (
+              <div className="p-4 border rounded bg-blue-50">
+                <p className="text-lg font-medium">Turno: {lastTurn.code}</p>
+                <p>Servicio: {lastTurn.serviceId}</p>
+                <p>Llamado a las: {new Date(lastTurn.calledAt).toLocaleTimeString()}</p>
+              </div>
+            ) : (
+              <p>No hay turnos llamados aún.</p>
+            )}
           </div>
         </main>
       </div>
