@@ -13,6 +13,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    const todayNow = new Date();
+    const localDate = todayNow.toLocaleString('es-CO', {
+      timeZone: 'America/Bogota',
+      hour: '2-digit',
+      minute: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour12: true,
+    });
+
+    console.log('Fecha en Colombia:', localDate);
     const count = await prisma.turn.count({
       where: {
         serviceId,
@@ -26,6 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const newTurn = await prisma.turn.create({
       data: {
         number,
+        fecha_creacion: localDate,
         code,
         serviceId,
         status: 'PENDING',

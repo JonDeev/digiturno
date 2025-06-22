@@ -1,15 +1,18 @@
-import { useUser } from '@/hooks/useUser'; // tu hook personalizado
-import { useAuth } from '@/hooks/useAuth'; // tu hook personalizado
-import { useLastCalledTurn } from '@/hooks/useLastCalledTurn'; // tu hook personalizado
-import { useCurrentTurn } from '@/hooks/useCurrentTurn'; // tu hook personalizado
 import { useRouter } from 'next/router';
 import { useEffect } from 'react';
+// tu hook personalizado
+import { useUser } from '@/hooks/useUser'; 
+import { useAuth } from '@/hooks/useAuth'; 
+import { useLastCalledTurn } from '@/hooks/useLastCalledTurn'; 
+import { useCurrentTurn } from '@/hooks/useCurrentTurn'; 
+import { usePendingTurns } from '@/hooks/usePendingTurns';
 
 export default function AsesorPanel() {
   useAuth(); // protege la ruta
   const user = useUser();
   const { lastTurn, loading } = useLastCalledTurn(user?.moduleId);
   const { turn, cargando, refetch } = useCurrentTurn(user?.moduleId);
+  const { pendingTurns, serviceName } = usePendingTurns("1");
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -120,11 +123,15 @@ export default function AsesorPanel() {
 
         {/* Panel principal */}
         <main className="flex-1 p-6 bg-white">
-          <h2 className="mb-4 text-xl font-semibold">Servicio: Reclamar formula (3 en espera)</h2>
+          <div>
+            <h2 className="text-xl font-bold">
+              {serviceName}: {pendingTurns}
+            </h2>
+          </div>
           <button onClick={handleCallNextTurn} className="px-6 py-3 mb-6 text-white bg-blue-600 rounded hover:bg-blue-700">
             Llamar siguiente turno
           </button>
-          <div className="p-4">
+          {/* <div className="p-4">
             <h2 className="mb-2 text-xl font-semibold">Último turno llamado</h2>
             {loading ? (
               <p>Cargando...</p>
@@ -137,7 +144,7 @@ export default function AsesorPanel() {
             ) : (
               <p>No hay turnos llamados aún.</p>
             )}
-          </div>
+          </div> */}
         </main>
       </div>
     </div>

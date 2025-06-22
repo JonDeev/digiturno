@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -17,25 +11,20 @@ model User {
   id        String   @id @default(uuid())
   name      String
   username  String   @unique
-  numberId  Int      @unique // ← entero obligatorio y único
+  numberId  Int      @unique
   password  String
   role      Role
   moduleId  String?
-  module    Module?  @relation(fields: [moduleId], references: [id])
   createdAt DateTime @default(now())
+  module    Module?  @relation(fields: [moduleId], references: [id])
 }
 
 model Module {
-  id    String @id @default(uuid())
-  name  String
+  id     String       @id @default(uuid())
+  name   String
   status ModuleStatus @default(AVAILABLE)
-  users User[]
-  turns Turn[] // ← Relación inversa agregada
-}
-
-enum ModuleStatus {
-  AVAILABLE
-  OCCUPIED
+  turns  Turn[]
+  users  User[]
 }
 
 model Service {
@@ -43,22 +32,28 @@ model Service {
   name      String
   code      String
   createdAt DateTime @default(now())
-  turns     Turn[] // ← Relación inversa agregada
+  turns     Turn[]
 }
 
 model Turn {
-  id          String     @id @default(uuid())
-  number      Int
-  code        String
-  service     Service    @relation(fields: [serviceId], references: [id])
-  serviceId   String
-  status      TurnStatus
-  priority    Int        @default(0)
-  calledCount Int        @default(0)
-  createdAt   DateTime   @default(now())
-  calledAt    DateTime?
-  module      Module?    @relation(fields: [moduleId], references: [id])
-  moduleId    String?
+  id             String     @id @default(uuid())
+  number         Int
+  code           String
+  serviceId      String
+  status         TurnStatus
+  priority       Int        @default(0)
+  calledCount    Int        @default(0)
+  createdAt      DateTime   @default(now())
+  calledAt       DateTime?
+  moduleId       String?
+  fecha_creacion String?
+  module         Module?    @relation(fields: [moduleId], references: [id])
+  service        Service    @relation(fields: [serviceId], references: [id])
+}
+
+enum ModuleStatus {
+  AVAILABLE
+  OCCUPIED
 }
 
 enum Role {
@@ -67,9 +62,9 @@ enum Role {
 }
 
 enum TurnStatus {
-  PENDING // Aún no ha sido llamado
-  CALLED // Llamado pero aún no atendido
-  ATTENDED // Atendido
-  SKIPPED // Se llamó pero no acudió
-  REQUEUED // Se volvió a colocar en cola
+  PENDING
+  CALLED
+  ATTENDED
+  SKIPPED
+  REQUEUED
 }
