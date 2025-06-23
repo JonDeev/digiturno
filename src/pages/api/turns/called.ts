@@ -3,11 +3,18 @@ import { prisma } from '@/lib/prisma';
 import { NextApiRequest, NextApiResponse } from 'next';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const calledTurn = await prisma.turn.findFirst({
-    where: { status: 'CALLED' },
-    orderBy: { calledAt: 'desc' },
-    include: { module: true },
-  });
+  try {
+    const calledTurns = await prisma.turn.findMany({
+      where: { status: 'CALLED' },
+      orderBy: { calledAt: 'desc' },
+      take: 10,
+      include: { module: true },
+    });
 
-  res.status(200).json(calledTurn || null);
+    res.status(200).json(calledTurns);
+  } catch (error) {
+    console.error('Error fetching called turns:', error);
+    res.status(500).json({ error: 'Error fetching called turns' });
+  }
 }
+

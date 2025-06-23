@@ -5,7 +5,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { turnId, status } = req.body;
 
-  const validStatuses = ['ATTENDED', 'SKIPPED', 'REQUEUED'];
+  const validStatuses = ['ATTENDED', 'SKIPPED', 'REQUEUED','ATTENDANCE'];
 
   if (!turnId || !validStatuses.includes(status)) {
     return res.status(400).json({ message: 'Datos inválidos' });

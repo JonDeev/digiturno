@@ -4,22 +4,20 @@ import { useState, useEffect } from 'react';
 import { useSpeech } from '@/hooks/useSpeech';
 
 export default function SmartTVScreen() {
-  const [calledTurn, setCalledTurn] = useState<any>(null);
+  const [calledTurns, setCalledTurns] = useState<any[]>([]); // ← Esto debe ser un array
+  const { modalVisible, modalTurn } = useSpeech(calledTurns);
 
   useEffect(() => {
-    const fetchCalledTurn = async () => {
-      const res = await fetch('/api/turns/called');
-      const data = await res.json();
-      setCalledTurn(data);
+    const fetchCalledTurns = async () => {
+        const res = await fetch('/api/turns/called');
+        const data = await res.json();
+        setCalledTurns(data); // ahora es un array
     };
 
-    fetchCalledTurn();
-    const interval = setInterval(fetchCalledTurn, 5000);
+    fetchCalledTurns();
+    const interval = setInterval(fetchCalledTurns, 5000);
     return () => clearInterval(interval);
   }, []);
-
-  useSpeech(calledTurn);
-
 
   return (
     <div className="flex w-screen h-screen font-sans">
@@ -52,11 +50,13 @@ export default function SmartTVScreen() {
         Videos informativos aquí
       </div>
       {/* ⬇️ Aquí va el modal */}
+       {modalVisible && (
       <TurnModal
-        visible={!!calledTurn}
-        code={calledTurn?.code || ''}
-        module={`${calledTurn?.module?.name || calledTurn?.moduleId || ''}`}
-       />
+        visible={true}
+        code={modalTurn.code}
+        module={modalTurn.module?.name || modalTurn.moduleId}
+      />
+    )}
     </div>
   );
 }

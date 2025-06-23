@@ -67,4 +67,5 @@ enum TurnStatus {
   ATTENDED
   SKIPPED
   REQUEUED
+  ATTENDANCE
 }

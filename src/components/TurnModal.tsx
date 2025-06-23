@@ -11,10 +11,10 @@ export default function TurnModal({ visible, code, module }) {
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70">
-      <div className="p-10 text-center text-black bg-white rounded-lg shadow-xl">
-        <div className="mb-4 text-6xl font-bold">{code}</div>
-        <div className="text-4xl">{module}</div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 animate-fadeIn">
+      <div className="p-8 text-center bg-white rounded-lg shadow-xl">
+        <p className="mb-4 text-6xl font-bold text-blue-800">{code}</p>
+        <p className="text-4xl text-gray-700">{module}</p>
       </div>
     </div>
   );
