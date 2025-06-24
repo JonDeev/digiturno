@@ -1,5 +1,6 @@
 // src/pages/api/turns/current.ts
 import { prisma } from '@/lib/prisma';
+import { TurnStatus } from '@prisma/client';
 import { NextApiRequest, NextApiResponse } from 'next';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -13,7 +14,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const currentTurn = await prisma.turn.findFirst({
       where: {
         moduleId,
-        status: 'CALLED',
+        status: {
+          in: [TurnStatus.CALLED, TurnStatus.ATTENDANCE],
+        }
       },
       orderBy: {
         calledAt: 'desc',
