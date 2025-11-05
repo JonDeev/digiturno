@@ -1,3 +1,4 @@
+// hooks/useSpeech.ts
 import { useState, useEffect, useRef } from 'react';
 
 export function useSpeech(calledTurns: any[]) {
@@ -5,20 +6,22 @@ export function useSpeech(calledTurns: any[]) {
   const [currentSpokenTurn, setCurrentSpokenTurn] = useState<any>(null);
   const turnQueue = useRef<any[]>([]);
   const isSpeaking = useRef(false);
-  const spokenTurnIds = useRef<Set<string>>(new Set());
+
+  // 🔑 AHORA guardamos eventos (id + calledCount), no sólo id
+  const spokenEventKeys = useRef<Set<string>>(new Set());
+  const synth = typeof window !== 'undefined' ? window.speechSynthesis : null;
+
+  const eventKey = (t: any) => `${t.id}:${t.calledCount ?? 0}`; // <-- CLAVE NUEVA
 
   function transformarCodigo(code: string) {
     const letra = code.charAt(0);
-    const numeroStr = code.slice(1);
-    const numero = parseInt(numeroStr, 10);
-    return numero < 100
-      ? `Turno ${letra} 0 ${numero}`
-      : `Turno ${letra} ${numero}`;
+    const numero = parseInt(code.slice(1), 10);
+    return numero < 100 ? `Turno ${letra} 0 ${numero}` : `Turno ${letra} ${numero}`;
   }
 
   const speakTurn = (turn: any, voice: SpeechSynthesisVoice) => {
-    const texto = `${transformarCodigo(turn.code)}, ${turn.module?.name || turn.moduleId}`;
-    let count = 0;
+    const texto = `${transformarCodigo(turn.code)}, ${turn.module?.name || `Módulo ${turn.moduleId}`}`;
+    let repeat = 0;
 
     const speakOnce = () => {
       const msg = new SpeechSynthesisUtterance(texto);
@@ -26,19 +29,18 @@ export function useSpeech(calledTurns: any[]) {
       msg.lang = 'es-ES';
       msg.rate = 0.8;
 
-      // Fallback en caso de que onend nunca se dispare
       const fallback = setTimeout(() => {
         console.warn('⚠️ speechSynthesis.onend no disparado, liberando isSpeaking manualmente');
         isSpeaking.current = false;
         setCurrentSpokenTurn(null);
         processQueue();
-      }, 6000);
+      }, 8000);
 
       msg.onend = () => {
         clearTimeout(fallback);
-        count++;
-        if (count < 3) {
-          setTimeout(speakOnce, 500);
+        repeat++;
+        if (repeat < 3) {
+          setTimeout(speakOnce, 600);
         } else {
           isSpeaking.current = false;
           setCurrentSpokenTurn(null);
@@ -54,57 +56,61 @@ export function useSpeech(calledTurns: any[]) {
         processQueue();
       };
 
-      window.speechSynthesis.speak(msg);
+      console.log('🗣 Reproduciendo con voz:', msg.voice?.name);
+      synth?.speak(msg);
     };
 
+    isSpeaking.current = true;
     setCurrentSpokenTurn(turn);
-    window.speechSynthesis.cancel();
     speakOnce();
   };
 
   const processQueue = () => {
-    console.log('🌀 Procesando cola...', {
-      isSpeaking: isSpeaking.current,
-      queueLength: turnQueue.current.length,
-      voicesLength: voices.length,
-    });
-
-    if (isSpeaking.current || turnQueue.current.length === 0 || voices.length === 0) return;
+    if (
+      isSpeaking.current ||
+      turnQueue.current.length === 0 ||
+      voices.length === 0 ||
+      localStorage.getItem('speechMaster') !== 'true'
+    ) return;
 
     const nextTurn = turnQueue.current.shift();
+
+    // ✅ Marcar evento como “ya hablado”
+    spokenEventKeys.current.add(eventKey(nextTurn));
+
     const voice =
       voices.find(v => v.name === 'Google español de Estados Unidos') ||
       voices.find(v => v.lang.startsWith('es')) ||
       voices[0];
 
-    isSpeaking.current = true;
-    spokenTurnIds.current.add(nextTurn.id);
     console.log('🔊 Reproduciendo:', transformarCodigo(nextTurn.code), nextTurn.module?.name || nextTurn.moduleId);
     speakTurn(nextTurn, voice);
   };
 
   useEffect(() => {
-    const loadVoices = () => {
-      const list = window.speechSynthesis.getVoices();
+    const tryLoadVoices = () => {
+      const list = synth?.getVoices() || [];
       if (list.length) setVoices(list);
+      else setTimeout(tryLoadVoices, 300);
     };
-
-    loadVoices();
-    window.speechSynthesis.onvoiceschanged = loadVoices;
+    tryLoadVoices();
+    if (synth) synth.onvoiceschanged = tryLoadVoices;
   }, []);
 
   useEffect(() => {
     if (!Array.isArray(calledTurns) || voices.length === 0) return;
 
+    // 🔁 Considera NUEVO evento si cambia calledCount (o calledAt si prefieres)
     const nuevosTurnos = [...calledTurns]
-      .reverse() // más antiguos primero
-      .filter(turn =>
-        !spokenTurnIds.current.has(turn.id) &&
-        !turnQueue.current.some(t => t.id === turn.id)
-      );
+      .sort((a, b) => (new Date(a.calledAt || 0).getTime()) - (new Date(b.calledAt || 0).getTime())) // más viejos primero
+      .filter(t => {
+        const key = eventKey(t);
+        const queued = turnQueue.current.some(q => eventKey(q) === key);
+        return !spokenEventKeys.current.has(key) && !queued;
+      });
 
     if (nuevosTurnos.length > 0) {
-      console.log('🆕 Nuevos turnos en cola: \n', nuevosTurnos.map(t => t.code));
+      console.log('🆕 Eventos nuevos:', nuevosTurnos.map(t => `${t.code} x${t.calledCount}`));
       turnQueue.current.push(...nuevosTurnos);
       processQueue();
     }

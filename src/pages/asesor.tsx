@@ -16,6 +16,7 @@ export default function AsesorPanel() {
   const [callingNext, setCallingNext] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const [showMarkAttended, setShowMarkAttended] = useState(false);
+  const [repeating, setRepeating] = useState(false); // <-- NUEVO
 
   const handleLogout = async () => {
     const token = localStorage.getItem('token');
@@ -32,9 +33,43 @@ export default function AsesorPanel() {
     router.push('/login');
   };
 
+  // <-- NUEVO: repetir llamado con el endpoint correcto
+  const handleRepeatCall = async () => {
+    const token = localStorage.getItem('token');
+    if (!token || !turn) return;
+    try {
+      setRepeating(true);
+      const res = await fetch('/api/turns/repeat-call', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ turnId: turn.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.message || 'No se pudo repetir el llamado');
+        return;
+      }
+      await refetch(); // actualiza calledCount/calledAt en UI
+    } catch (err) {
+      console.error('Error al repetir llamado:', err);
+      alert('Error al repetir llamado');
+    } finally {
+      setRepeating(false);
+    }
+  };
+
   const updateTurnStatus = async (status: string) => {
     const token = localStorage.getItem('token');
     if (!token || !turn) return;
+
+    // <-- CAMBIO: si es "CALLED", usa repeat-call (no update-status)
+    if (status === 'CALLED') {
+      await handleRepeatCall();
+      return;
+    }
 
     try {
       await fetch('/api/turns/update-status', {
@@ -145,10 +180,13 @@ export default function AsesorPanel() {
                       Atender
                     </button>
                     <button
-                      onClick={() => updateTurnStatus('CALLED')}
-                      className="py-2 text-white bg-blue-600 rounded hover:bg-blue-700"
+                      onClick={handleRepeatCall} // <-- CAMBIO
+                      disabled={repeating}
+                      className={`py-2 text-white rounded ${
+                        repeating ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+                      }`}
                     >
-                      Repetir llamado
+                      {repeating ? 'Repitiendo...' : 'Repetir llamado'}
                     </button>
                   </>
                 )}
@@ -173,9 +211,7 @@ export default function AsesorPanel() {
                 onClick={handleCallNextTurn}
                 disabled={callingNext}
                 className={`px-6 py-3 mb-6 text-white rounded ${
-                  callingNext
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-blue-600 hover:bg-blue-700'
+                  callingNext ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
                 }`}
               >
                 Llamar siguiente turno

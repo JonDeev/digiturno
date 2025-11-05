@@ -8,6 +8,14 @@ export default function SmartTVScreen() {
   const { modalVisible, modalTurn } = useSpeech(calledTurns);
 
   useEffect(() => {
+    localStorage.setItem('speechMaster', 'true');
+    return () => {
+      localStorage.removeItem('speechMaster');
+    };
+  }, []);
+
+
+  useEffect(() => {
     const fetchCalledTurns = async () => {
         const res = await fetch('/api/turns/called');
         const data = await res.json();
