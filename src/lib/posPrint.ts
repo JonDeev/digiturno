@@ -179,11 +179,11 @@ export async function printTurnE200i(data: {
   raw += '\x1B\x45\x01' + sz(1, 1) + 'SU TURNO APARECE EN PANTALLA DEBE ESPERAR\n' + '\x1B\x45\x00';
 
   // Web
-  if (data.website) raw += `${data.website}\n`;
+  raw += '\x1B\x45\x01' + sz(1, 1) + 'www.sism.com.co\n' + '\x1B\x45\x00';
 
   // ---------- AJUSTE DE CORTE (AQUÍ EL CAMBIO) ----------
   // Más líneas de respiro y corte al final.
-  raw += '\x1B\x64\x11';   // feed(6) -> ajusta a 5–8 si quieres más aire
+  raw += '\x1B\x64\x11';   // feed(12) -> ajusta a 5–8 si quieres más aire
   raw += '\x1D\x56\x00';   // corte TOTAL (m=0) justo aquí
   // ------------------------------------------------------
 
