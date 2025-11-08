@@ -41,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }),
       prisma.module.update({
         where: { id: moduleId },
-        data: { status: 'OCCUPIED' },
+        data: { status: 'AVAILABLE' },
       }),
     ]);
 

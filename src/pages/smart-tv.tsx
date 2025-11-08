@@ -1,12 +1,48 @@
+// src/pages/smart-tv.tsx
 import Image from 'next/image';
 import TurnModal from '@/components/TurnModal';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSpeech } from '@/hooks/useSpeech';
+import { useLastCalledTurns } from '@/hooks/useLastCalledTurns';
+import CalledTurnsList from '@/components/CalledTurnsList';
 
 export default function SmartTVScreen() {
-  const [calledTurns, setCalledTurns] = useState<any[]>([]); // ← Esto debe ser un array
-  const { modalVisible, modalTurn } = useSpeech(calledTurns);
+  // 1) Panel Izquierdo: últimos 8 en ATTENDED/ATTENDANCE (ordenados por calledAt desc)
+  const { turns: attendedTurns, loading } = useLastCalledTurns({
+    limit: 10,
+    refreshMs: 5000,
+  });
 
+  // 2) Voz + Modal: SOLO turnos en estado CALLED (NO ATTENDANCE)
+  const [justCalledTurns, setJustCalledTurns] = useState<any[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+
+    const fetchJustCalled = async () => {
+      try {
+        // Si tu API /api/turns/called ya filtra status = CALLED, con esto basta:
+        const res = await fetch('/api/turns/called?limit=8', { cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (alive) setJustCalledTurns(Array.isArray(data) ? data : (data?.rows ?? []));
+      } catch (e) {
+        // Silencioso para no romper la TV
+      }
+    };
+
+    fetchJustCalled();
+    const id = setInterval(fetchJustCalled, 5000);
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
+  }, []);
+
+  // Hook de voz (anuncia SÓLO lo que está en CALLED)
+  const { modalVisible, modalTurn } = useSpeech(justCalledTurns);
+
+  // Marcar este dispositivo como "speech master"
   useEffect(() => {
     localStorage.setItem('speechMaster', 'true');
     return () => {
@@ -14,42 +50,25 @@ export default function SmartTVScreen() {
     };
   }, []);
 
-
-  useEffect(() => {
-    const fetchCalledTurns = async () => {
-        const res = await fetch('/api/turns/called');
-        const data = await res.json();
-        setCalledTurns(data); // ahora es un array
-    };
-
-    fetchCalledTurns();
-    const interval = setInterval(fetchCalledTurns, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
   return (
     <div className="flex w-screen h-screen font-sans">
       {/* Panel Izquierdo */}
       <div className="flex flex-col w-1/4 p-4 text-gray-900 bg-gray-100">
         {/* Logo */}
-        <div className="mb-6">
-          <Image src="/logo.png" alt="Logo" width={100} height={100} />
+        <div className="mb-6 flex items-center justify-center">
+          <Image src="/logo.png" alt="Logo" width={120} height={120} />
         </div>
 
-        {/* Encabezados */}
-        <div className="flex px-2 py-2 font-bold text-white bg-gray-800 rounded">
-          <div className="w-1/2 text-center">TURNO</div>
-          <div className="w-1/2 text-center">MÓDULO</div>
-        </div>
-
-        {/* Lista de turnos */}
-        <div className="flex flex-col mt-2 space-y-2">
-          {/* Ejemplo estático (luego dinámico) */}
-          <div className="flex justify-between px-4 py-2 bg-white rounded shadow">
-            <span className="font-semibold">A012</span>
-            <span>Módulo 3</span>
+        {/* Lista dinámica: ATTENDED/ATTENDANCE */}
+        {loading ? (
+          <div className="space-y-2">
+            <div className="h-9 rounded bg-gray-300 animate-pulse" />
+            <div className="h-9 rounded bg-gray-300 animate-pulse" />
+            <div className="h-9 rounded bg-gray-300 animate-pulse" />
           </div>
-        </div>
+        ) : (
+          <CalledTurnsList turns={attendedTurns} />
+        )}
       </div>
 
       {/* Panel Derecho */}
@@ -57,14 +76,15 @@ export default function SmartTVScreen() {
         {/* Placeholder para videos */}
         Videos informativos aquí
       </div>
-      {/* ⬇️ Aquí va el modal */}
-       {modalVisible && (
-      <TurnModal
-        visible={true}
-        code={modalTurn.code}
-        module={modalTurn.module?.name || modalTurn.moduleId}
-      />
-    )}
+
+      {/* Modal de anuncio de turno (solo cuando hay CALLED) */}
+      {modalVisible && (
+        <TurnModal
+          visible
+          code={modalTurn.code}
+          module={modalTurn.module?.name || modalTurn.moduleId}
+        />
+      )}
     </div>
   );
 }

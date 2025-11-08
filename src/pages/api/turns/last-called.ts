@@ -1,28 +1,43 @@
 // src/pages/api/turns/last-called.ts
+import type { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '@/lib/prisma';
-import { NextApiRequest, NextApiResponse } from 'next';
 
+/**
+ * Devuelve los últimos turnos en estado ATTENDED o ATTENDANCE.
+ * Query params:
+ *  - limit?: number (default 8, máx 50)
+ *  - serviceId?: string (opcional para filtrar por servicio)
+ */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { serviceId } = req.query;
-
-  if (!serviceId || typeof serviceId !== 'string') {
-    return res.status(400).json({ message: 'Parámetro serviceId requerido' });
+  if (req.method !== 'GET') {
+    res.setHeader('Allow', 'GET');
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const lastCalled = await prisma.turn.findFirst({
+    const limitRaw = (req.query.limit as string) ?? '8';
+    const limit = Math.min(Math.max(parseInt(limitRaw, 10) || 8, 1), 50);
+    const serviceId = (req.query.serviceId as string) || undefined;
+
+    const turns = await prisma.turn.findMany({
       where: {
-        serviceId,
-        status: 'CALLED',
+        ...(serviceId ? { serviceId } : {}),
+        status: { in: ['ATTENDED', 'ATTENDANCE'] },
       },
-      orderBy: {
-        calledAt: 'desc',
+      orderBy: [{ calledAt: 'desc' }, { createdAt: 'desc' }],
+      take: limit,
+      select: {
+        id: true,
+        code: true,
+        calledAt: true,
+        moduleId: true,
+        module: { select: { id: true, name: true } },
       },
     });
 
-    res.status(200).json(lastCalled);
+    return res.status(200).json(turns);
   } catch (error) {
-    console.error('Error al obtener el último turno llamado:', error);
-    res.status(500).json({ message: 'Error interno del servidor' });
+    console.error('API /turns/last-called error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }

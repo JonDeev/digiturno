@@ -2,7 +2,6 @@ import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { useUser } from '@/hooks/useUser';
 import { useAuth } from '@/hooks/useAuth';
-import { useLastCalledTurn } from '@/hooks/useLastCalledTurn';
 import { useCurrentTurn } from '@/hooks/useCurrentTurn';
 import { usePendingTurns } from '@/hooks/usePendingTurns';
 
