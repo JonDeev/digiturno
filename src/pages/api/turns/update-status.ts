@@ -1,6 +1,7 @@
 // src/pages/api/turns/update-status.ts
 import { prisma } from '@/lib/prisma'
 import type { NextApiRequest, NextApiResponse } from 'next'
+import { notifyPendingChanged } from '@/lib/pendingBus' // ⬅️ NUEVO
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).json({ message: 'Método no permitido' })
@@ -17,6 +18,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    // ⬅️ NUEVO: capturamos el estado anterior y serviceId para saber si cambia pertenencia a PENDING
+    const prev = await prisma.turn.findUnique({
+      where: { id: turnId },
+      select: { status: true, serviceId: true },
+    })
+
     let updated
     if (status === 'REQUEUED') {
       // Espera N llamadas (default 2). Guardamos prioridad negativa.
@@ -35,6 +42,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         where: { id: turnId },
         data: { status },
       })
+    }
+
+    // ⬅️ NUEVO: notificar SOLO si cambia pertenencia al conjunto contado (solo PENDING)
+    if ((prev?.status === 'PENDING') !== (updated.status === 'PENDING')) {
+      notifyPendingChanged(updated.serviceId as string)
     }
 
     return res.status(200).json(updated)

@@ -2,6 +2,7 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { authenticate, AuthenticatedRequest } from '@/middleware/auth'
 import { prisma } from '@/lib/prisma'
+import { notifyPendingChanged } from '@/lib/pendingBus';
 
 /** Rango de hoy en zona America/Bogota (inicio incluido, fin excluido) */
 function getTodayRangeBogota() {
@@ -87,6 +88,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(404).json({ message: 'No hay turnos disponibles' })
       }
 
+      // ⬅️ NUEVO: notificar a los suscriptores SSE (recalculará los PENDING de ese servicio)
+      notifyPendingChanged(updatedTurn.serviceId as string)
+
       return res.status(200).json(updatedTurn)
     } catch (error: any) {
       if (error?.message === 'RACE_RETRY') {
@@ -124,7 +128,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             return tx.turn.findUnique({ where: { id: candidate.id }, include: { service: true } })
           }, { isolationLevel: 'Serializable' })
-          if (again) return res.status(200).json(again)
+          if (again) {
+            // ⬅️ NUEVO: notificar también en el retry exitoso
+            notifyPendingChanged(again.serviceId as string)
+            return res.status(200).json(again)
+          }
           return res.status(404).json({ message: 'No hay turnos disponibles' })
         } catch (e) {
           console.error('Retry call-next failed:', e)
