@@ -51,6 +51,17 @@ model Turn {
   service        Service    @relation(fields: [serviceId], references: [id])
 }
 
+model Media {
+  id        Int      @id @default(autoincrement())
+  name      String            // Nombre amigable: "Video CAC Citas"
+  filename  String            // CACCITA.mp4, asgcita.mp4
+  url       String            // /media/CACCITA.mp4 o URL completa http://...
+  order     Int      @default(0)   // Orden de reproducción
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+
 enum ModuleStatus {
   AVAILABLE
   OCCUPIED

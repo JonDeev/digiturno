@@ -26,7 +26,7 @@ export function useSpeech(calledTurns: any[]) {
     const speakOnce = () => {
       const msg = new SpeechSynthesisUtterance(texto);
       msg.voice = voice;
-      msg.lang = 'es-ES';
+      msg.lang = 'es-US';
       msg.rate = 0.8;
 
       const fallback = setTimeout(() => {
