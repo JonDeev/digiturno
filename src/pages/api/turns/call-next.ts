@@ -3,6 +3,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { authenticate, AuthenticatedRequest } from '@/middleware/auth'
 import { prisma } from '@/lib/prisma'
 import { notifyPendingChanged } from '@/lib/pendingBus';
+import { notifyRequeuedChanged } from '@/lib/requeuedBus'; // ⬅️ NUEVO
 
 /** Rango de hoy en zona America/Bogota (inicio incluido, fin excluido) */
 function getTodayRangeBogota() {
@@ -88,8 +89,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(404).json({ message: 'No hay turnos disponibles' })
       }
 
-      // ⬅️ NUEVO: notificar a los suscriptores SSE (recalculará los PENDING de ese servicio)
+      // notificar a los suscriptores SSE
       notifyPendingChanged(updatedTurn.serviceId as string)
+      notifyRequeuedChanged(updatedTurn.serviceId as string) // ⬅️ NUEVO
 
       return res.status(200).json(updatedTurn)
     } catch (error: any) {
@@ -129,8 +131,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return tx.turn.findUnique({ where: { id: candidate.id }, include: { service: true } })
           }, { isolationLevel: 'Serializable' })
           if (again) {
-            // ⬅️ NUEVO: notificar también en el retry exitoso
             notifyPendingChanged(again.serviceId as string)
+            notifyRequeuedChanged(again.serviceId as string) // ⬅️ NUEVO
             return res.status(200).json(again)
           }
           return res.status(404).json({ message: 'No hay turnos disponibles' })
