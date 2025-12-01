@@ -31,24 +31,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ message: 'Módulo no asignado al asesor' })
     }
 
-    // === NUEVO: rango de "hoy" (America/Bogota) para filtrar createdAt ===
+    // === Rango de "hoy" (America/Bogota) para filtrar createdAt ===
     const { start: todayStart, end: todayEnd } = getTodayRangeBogota()
 
     try {
       const updatedTurn = await prisma.$transaction(async (tx) => {
-        // 1) Elegir el próximo turno ELEGIBLE:
-        //    - PENDING (siempre)
-        //    - REQUEUED SOLO si priority >= 0 (ya cumplió la espera)
-        //    - *** SOLO creados HOY ***
-        const candidate = await tx.turn.findFirst({
+        // Base de filtro de "turnos de hoy"
+        const baseWhereToday = {
+          createdAt: { gte: todayStart, lt: todayEnd },
+          // Si este módulo solo atiende ciertos servicios, filtra aquí:
+          // serviceId: { in: [...] }
+        }
+
+        // 1) Intentar con la regla normal:
+        //    - PENDING
+        //    - REQUEUED con priority >= 0
+        let candidate = await tx.turn.findFirst({
           where: {
+            ...baseWhereToday,
             OR: [
               { status: 'PENDING' },
               { status: 'REQUEUED', priority: { gte: 0 } },
             ],
-            createdAt: { gte: todayStart, lt: todayEnd }, // <-- añadido
-            // Si este módulo solo atiende ciertos servicios, filtra aquí:
-            // serviceId: { in: [...] }
           },
           orderBy: [
             { priority: 'desc' }, // VIP/ajustes manuales arriba; los “liberados” quedan en 0
@@ -56,6 +60,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           ],
           include: { service: true },
         })
+
+        // 1.bis) Fallback:
+        // Si no hay PENDING ni REQUEUED con priority >= 0,
+        // pero sí hay REQUEUED (aunque tengan priority negativa),
+        // los empezamos a llamar.
+        if (!candidate) {
+          candidate = await tx.turn.findFirst({
+            where: {
+              ...baseWhereToday,
+              status: 'REQUEUED',
+            },
+            orderBy: [
+              { priority: 'desc' }, // -1 antes que -2, etc.
+              { createdAt: 'asc' },
+            ],
+            include: { service: true },
+          })
+        }
 
         if (!candidate) return null
 
@@ -99,18 +121,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Un reintento simple
         try {
           const again = await prisma.$transaction(async (tx) => {
-            const candidate = await tx.turn.findFirst({
+            const baseWhereToday = {
+              createdAt: { gte: todayStart, lt: todayEnd },
+            }
+
+            // Repetimos la misma lógica de selección con fallback
+            let candidate = await tx.turn.findFirst({
               where: {
+                ...baseWhereToday,
                 OR: [
                   { status: 'PENDING' },
                   { status: 'REQUEUED', priority: { gte: 0 } },
                 ],
-                createdAt: { gte: todayStart, lt: todayEnd }, // <-- añadido también aquí
               },
               orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
               include: { service: true },
             })
+
+            if (!candidate) {
+              candidate = await tx.turn.findFirst({
+                where: {
+                  ...baseWhereToday,
+                  status: 'REQUEUED',
+                },
+                orderBy: [
+                  { priority: 'desc' },
+                  { createdAt: 'asc' },
+                ],
+                include: { service: true },
+              })
+            }
+
             if (!candidate) return null
+
             const ok = await tx.turn.updateMany({
               where: { id: candidate.id, status: candidate.status },
               data: {
@@ -128,8 +171,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               data: { priority: { increment: 1 } },
             })
 
-            return tx.turn.findUnique({ where: { id: candidate.id }, include: { service: true } })
+            return tx.turn.findUnique({
+              where: { id: candidate.id },
+              include: { service: true },
+            })
           }, { isolationLevel: 'Serializable' })
+
           if (again) {
             notifyPendingChanged(again.serviceId as string)
             notifyRequeuedChanged(again.serviceId as string) // ⬅️ NUEVO
