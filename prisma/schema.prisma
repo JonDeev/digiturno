@@ -47,6 +47,8 @@ model Turn {
   calledAt       DateTime?
   moduleId       String?
   fecha_creacion String?
+  attentionStartedAt  DateTime?   // ⬅️ NUEVO: inicio de atención
+  attentionFinishedAt DateTime?   // ⬅️ NUEVO: fin de atención
   module         Module?    @relation(fields: [moduleId], references: [id])
   service        Service    @relation(fields: [serviceId], references: [id])
 }
