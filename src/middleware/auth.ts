@@ -1,3 +1,4 @@
+// src/middleware/auth.ts
 import { NextApiRequest, NextApiResponse } from 'next';
 import jwt from 'jsonwebtoken';
 
@@ -12,7 +13,11 @@ export interface AuthenticatedRequest extends NextApiRequest {
   };
 }
 
-export function authenticate(req: AuthenticatedRequest, res: NextApiResponse, next: () => void) {
+export function authenticate(
+  req: AuthenticatedRequest,
+  res: NextApiResponse,
+  next: () => void | Promise<void>
+) {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -24,7 +29,7 @@ export function authenticate(req: AuthenticatedRequest, res: NextApiResponse, ne
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as AuthenticatedRequest['user'];
     req.user = decoded;
-    next();
+    return next(); // ⬅️ importante: devolver la promesa del callback
   } catch (err) {
     return res.status(403).json({ message: 'Token inválido o expirado' });
   }

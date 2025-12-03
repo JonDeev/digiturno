@@ -1,20 +1,42 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import jwt_decode from 'jwt-decode';
+
+type DecodedToken = {
+  userId: string;
+  username: string;
+  name: string;
+  moduleId?: string;
+  role: 'ADMIN' | 'ADVISOR';
+  exp: number;
+};
 
 export default function LoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [moduleId, setModuleId] = useState('');
-  const [modules, setModules] = useState([]);
+  const [modules, setModules] = useState<any[]>([]);
   const [error, setError] = useState('');
 
-    useEffect(() => {
+  // Si ya hay token, redirigir según el rol
+  useEffect(() => {
     const token = localStorage.getItem('token');
-    if (token) {
-      router.push('/asesor');
+    if (!token) return;
+
+    try {
+      const decoded = jwt_decode<DecodedToken>(token);
+
+      if (decoded.role === 'ADMIN') {
+        router.push('/admin');
+      } else {
+        router.push('/asesor');
+      }
+    } catch (err) {
+      console.error('Token inválido en login:', err);
+      localStorage.removeItem('token');
     }
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     // Obtener módulos disponibles al cargar la vista
@@ -36,12 +58,26 @@ export default function LoginPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password, moduleId }),
     });
-    
+
     const result = await res.json();
-    console.log("result",result.token)
+    console.log('result', result.token);
+
     if (res.ok) {
       localStorage.setItem('token', result.token); // Guardamos el JWT
-      router.push('/asesor'); // Redirigir al panel de llamado
+
+      try {
+        const decoded = jwt_decode<DecodedToken>(result.token);
+
+        if (decoded.role === 'ADMIN') {
+          router.push('/admin');
+        } else {
+          router.push('/asesor');
+        }
+      } catch (err) {
+        console.error('Error al decodificar token después de login:', err);
+        // Fallback al panel de asesor si algo falla
+        router.push('/asesor');
+      }
     } else {
       setError(result.message || 'Error al iniciar sesión');
     }
