@@ -8,15 +8,17 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  username  String   @unique
-  numberId  Int      @unique
-  password  String
-  role      Role
-  moduleId  String?
-  createdAt DateTime @default(now())
-  module    Module?  @relation(fields: [moduleId], references: [id])
+  id            String        @id @default(uuid())
+  name          String
+  username      String        @unique
+  numberId      Int           @unique
+  password      String
+  role          Role
+  moduleId      String?
+  createdAt     DateTime      @default(now())
+  module        Module?       @relation(fields: [moduleId], references: [id])
+  attendedTurns Turn[]        @relation("UserAttendedTurns")
+  userServices  UserService[]
 }
 
 model Module {
@@ -28,29 +30,32 @@ model Module {
 }
 
 model Service {
-  id        String   @id @default(uuid())
-  name      String
-  code      String
-  createdAt DateTime @default(now())
-  turns     Turn[]
+  id           String        @id @default(uuid())
+  name         String
+  code         String
+  createdAt    DateTime      @default(now())
+  turns        Turn[]
+  userServices UserService[]
 }
 
 model Turn {
-  id             String     @id @default(uuid())
-  number         Int
-  code           String
-  serviceId      String
-  status         TurnStatus
-  priority       Int        @default(0)
-  calledCount    Int        @default(0)
-  createdAt      DateTime   @default(now())
-  calledAt       DateTime?
-  moduleId       String?
-  fecha_creacion String?
-  attentionStartedAt  DateTime?   // ⬅️ NUEVO: inicio de atención
-  attentionFinishedAt DateTime?   // ⬅️ NUEVO: fin de atención
-  module         Module?    @relation(fields: [moduleId], references: [id])
-  service        Service    @relation(fields: [serviceId], references: [id])
+  id                   String     @id @default(uuid())
+  number               Int
+  code                 String
+  serviceId            String
+  status               TurnStatus
+  priority             Int        @default(0)
+  calledCount          Int        @default(0)
+  createdAt            DateTime   @default(now())
+  calledAt             DateTime?
+  moduleId             String?
+  fecha_creacion       String?
+  attentionStartedAt   DateTime?  // ⬅️ inicio de atención
+  attentionFinishedAt  DateTime?  // ⬅️ fin de atención
+  attendedById         String?
+  module               Module?    @relation(fields: [moduleId], references: [id])
+  service              Service    @relation(fields: [serviceId], references: [id])
+  attendedBy           User?      @relation("UserAttendedTurns", fields: [attendedById], references: [id])
 }
 
 model Media {
@@ -63,6 +68,24 @@ model Media {
   createdAt DateTime @default(now())
 }
 
+model UserService {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  serviceId String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  service   Service  @relation(fields: [serviceId], references: [id])
+
+  @@unique([userId, serviceId])
+}
+
+model TvConfig {
+  id        Int      @id @default(autoincrement())
+  logoUrl   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
 
 enum ModuleStatus {
   AVAILABLE
